@@ -104,7 +104,8 @@ public class Simulacion extends JFrame {
                 int result = fileChooser.showOpenDialog(Simulacion.this);
                 if (result == JFileChooser.APPROVE_OPTION) {
                     selectedFile = fileChooser.getSelectedFile();
-                    JOptionPane.showMessageDialog(Simulacion.this, "Archivo seleccionado: " + selectedFile.getName());
+                    //JOptionPane.showMessageDialog(Simulacion.this, "Archivo seleccionado: " + selectedFile.getName());
+                    fileLabel.setText("Archivo seleccionado: " + selectedFile.getName()); //Cambia el texto de la etiqueta en vez de mostrar un popup
                 }
             }
         });
@@ -173,17 +174,19 @@ public class Simulacion extends JFrame {
             }
 
             double sum = data.stream().mapToDouble(Double::doubleValue).sum();
-            double mean = sum / data.size();
+            //double mean = sum / data.size(); //La media no se calcula, siempre es 0.5
+            double mean = 0.5;
 
             tableModel.setRowCount(0);
             ArrayList<String> runs = new ArrayList<>();
 
             for (double num : data) {
-                String position = (num > mean) ? "Arriba de la Media" : "Debajo de la Media";
+                String position = (num >= mean) ? "1" : "0"; //Arriba se representa con 1, abajo con 0
                 tableModel.addRow(new Object[]{num, mean, position});
                 runs.add(position);
             }
 
+            //System.out.println(runs.size());
             calculateRunsTest(runs, mean);
 
         } catch (FileNotFoundException e) {
@@ -197,21 +200,33 @@ public class Simulacion extends JFrame {
 
     // Método para calcular las corridas y realizar los análisis
     private void calculateRunsTest(ArrayList<String> runs, double mean) {
-        int numCorridas = 0;
+        int numCorridas = 1; //numCorridas debe empezar cómo 1
         int countUp = 0;
         int countDown = 0;
+        int n = runs.size(); //extraer n
 
         // Calcular las corridas y contar las veces que hay una transición entre "Arriba" y "Abajo"
+        if (runs.get(0) == "1") {
+            countUp++;
+        } else {
+            countDown++;
+        }
         for (int i = 1; i < runs.size(); i++) {
+            if (runs.get(i) == "1") {
+                countUp++;
+            } else {
+                countDown++;
+            }
             if (!runs.get(i).equals(runs.get(i - 1))) {
                 numCorridas++;
             }
         }
+        System.out.println(String.format("n={%d}, c1={%d}, c0={%d}",n, countUp, countDown));
 
         // Calcular los parámetros para la fórmula de Z
-        double expected = (2 * countUp * countDown) / (double) runs.size();
-        double variance = (2 * countUp * countDown * (2 * countUp * countDown - runs.size())) 
-                          / (double) (runs.size() * runs.size() * (runs.size() - 1));
+        double expected = ((2 * countUp * countDown) / (double) n) + 0.5;
+        double variance = (2 * countUp * countDown * ((2 * countUp * countDown) - n)) //corrección en la fórmula
+                          / (double) (n * n * (n - 1));
         double standardDeviation = Math.sqrt(variance);
         double zValue = (numCorridas - expected) / standardDeviation;
 
@@ -219,8 +234,8 @@ public class Simulacion extends JFrame {
         runsLabel.setText("Número de Corridas: " + numCorridas);
         meanLabel.setText("Media: " + mean);
         zLabel.setText("Valor Z: " + zValue);
-        intermediateLabel.setText("Operaciones Intermedias: \nR = " + numCorridas + " \nE = " + expected 
-                                  + " \nσ = " + standardDeviation);
+        intermediateLabel.setText("Operaciones Intermedias: \nC0 = " + numCorridas + " \nMu = " + expected 
+                                  + " \nσ^2 = " + variance);
 
         if (Math.abs(zValue) <= 1.96) {
             independenceLabel.setText("Resultado: Los números son independientes.");
